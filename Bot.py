@@ -3,8 +3,9 @@ import sqlite3
 import logging
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+from telegram.request import HTTPXRequest  # Import this
 
-# Configuration - Ensure these are set in your Render Environment Variables
+# Configuration
 TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 ADMIN_ID = int(os.environ.get("ADMIN_CHAT_ID"))
 
@@ -50,7 +51,6 @@ async def get_prediction(update: Update, context: ContextTypes.DEFAULT_TYPE):
     row = cursor.fetchone()
     balance = row[0] if row else 0
 
-    # Admin bypasses coin check; others need balance
     if user_id == ADMIN_ID or balance > 0:
         await update.message.reply_text("🌟 Signal Generated: [Star coordinates...]")
         if user_id != ADMIN_ID:
@@ -59,8 +59,11 @@ async def get_prediction(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text("❌ Insufficient coins! Please deposit.")
 
-# Initialize Bot
-app = ApplicationBuilder().token(TOKEN).build()
+# Initialize Bot with Timeout Settings
+# This prevents the TimedOut errors that were causing your bot to crash
+request = HTTPXRequest(connect_timeout=60.0, read_timeout=60.0)
+app = ApplicationBuilder().token(TOKEN).request(request).build()
+
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("pay", pay))
 app.add_handler(CommandHandler("addcoins", add_coins))
